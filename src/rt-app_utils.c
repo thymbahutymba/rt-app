@@ -1,4 +1,4 @@
-/* 
+/*
 This file is part of rt-app - https://launchpad.net/rt-app
 Copyright (C) 2010  Giacomo Bagnoli <g.bagnoli@asidev.com>
 Copyright (C) 2014  Juri Lelli <juri.lelli@gmail.com>
@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <errno.h>
 #include <math.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #include "rt-app_utils.h"
 
@@ -166,6 +167,26 @@ pid_t
 gettid(void)
 {
 	return syscall(__NR_gettid);
+}
+
+void
+log_migrations(FILE *handler)
+{
+	char command[100];
+	int migrations = -1;
+	FILE *cat;
+
+	sprintf(command,
+		"cat /proc/%d/sched | grep nr_migrations | tr -s ' ' | sed 's/ : /:/' | cut -d \":\" -f 2",
+		gettid());
+        if ((cat = popen(command, "r")) == NULL)
+                log_error("Error: %s", strerror(errno));
+        else {
+                fscanf(cat, "%d", &migrations);
+                pclose(cat);
+                fprintf(handler, "#se.nr_migrations %10d", migrations);
+        }
+	fprintf(handler, "\n");
 }
 
 int

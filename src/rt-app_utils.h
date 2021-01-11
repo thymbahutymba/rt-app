@@ -126,6 +126,9 @@ log_timing(FILE *handler, timing_point_t *t);
 pid_t
 gettid(void);
 
+void
+log_migrations(FILE *handler);
+
 __u64
 timespec_to_nsec(struct timespec *ts);
 

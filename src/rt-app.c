@@ -1181,9 +1181,12 @@ void *thread_body(void *arg)
 		log_ftrace(ft_data.marker_fd, FTRACE_TASK,
 			   "rtapp_main: event=clock_ref data=%llu",
 			   timespec_to_usec_ull(&t_zero));
-	}
+        } else {
+                while (!timespec_to_usec(&t_zero))
+                        ;
+        }
 
-	if (!data->forked)
+        if (!data->forked)
 		pthread_barrier_wait(&threads_barrier);
 
 	t_first = t_zero;
@@ -1198,15 +1201,6 @@ void *thread_body(void *arg)
 
 	log_ftrace(ft_data.marker_fd, FTRACE_TASK,
 		   "rtapp_task: event=start");
-
-	if (data->delay > 0) {
-		struct timespec delay = usec_to_timespec(data->delay);
-
-		log_debug("initial delay %lu ", data->delay);
-		t_first = timespec_add(&t_first, &delay);
-		clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t_first,
-				NULL);
-	}
 
 	/* TODO find a better way to handle that constraint:
 	 * Set the task to SCHED_DEADLINE as far as possible touching its
@@ -1230,6 +1224,15 @@ void *thread_body(void *arg)
 	 * log_idx      - index of current row in the log buffer
 	 */
 	phase = phase_loop = thread_loop = log_idx = 0;
+
+	if (data->delay > 0) {
+		struct timespec delay = usec_to_timespec(data->delay);
+
+		log_debug("initial delay %lu ", data->delay);
+		t_first = timespec_add(&t_first, &delay);
+		clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t_first,
+				NULL);
+	}
 
 	/* The following is executed for each phase. */
 	while (continue_running && thread_loop != data->loop) {
@@ -1338,6 +1341,9 @@ void *thread_body(void *arg)
 		for (j = 0; j < log_idx; j++)
 			log_timing(data->log_handler, &timings[j]);
 	}
+
+	// Log migrations to file
+	log_migrations(data->log_handler);
 
 	log_ftrace(ft_data.marker_fd, FTRACE_TASK,
 		   "rtapp_task: event=end");
